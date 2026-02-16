@@ -1,0 +1,72 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { speechService } from '../services/speechService';
+
+export const useSpeechRecognition = (options = {}) => {
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [confidence, setConfidence] = useState(0);
+  const [error, setError] = useState(null);
+  const recognitionRef = useRef(null);
+
+  const startListening = useCallback(() => {
+    setError(null);
+    setTranscript('');
+    setInterimTranscript('');
+
+    try {
+      speechService.startListening({
+        onStart: () => setIsListening(true),
+        onResult: ({ transcript: t, confidence: c }) => {
+          setTranscript((prev) => prev + ' ' + t);
+          setConfidence(c);
+          options.onResult?.({ transcript: t, confidence: c });
+        },
+        onInterim: ({ transcript: t }) => {
+          setInterimTranscript(t);
+          options.onInterim?.(t);
+        },
+        onError: (err) => {
+          setError(err);
+          setIsListening(false);
+          options.onError?.(err);
+        },
+        onEnd: () => {
+          setIsListening(false);
+          setInterimTranscript('');
+          options.onEnd?.();
+        },
+      });
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [options]);
+
+  const stopListening = useCallback(() => {
+    speechService.stopListening();
+    setIsListening(false);
+  }, []);
+
+  const resetTranscript = useCallback(() => {
+    setTranscript('');
+    setInterimTranscript('');
+    setConfidence(0);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      speechService.stopListening();
+    };
+  }, []);
+
+  return {
+    isListening,
+    transcript: transcript.trim(),
+    interimTranscript,
+    confidence,
+    error,
+    startListening,
+    stopListening,
+    resetTranscript,
+  };
+};

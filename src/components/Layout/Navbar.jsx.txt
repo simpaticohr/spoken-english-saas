@@ -1,0 +1,158 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
+import { Mic, Menu, X, LogOut, User, Crown, Bell } from 'lucide-react';
+
+const Navbar = () => {
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <nav className="bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
+              <Mic className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">SpeakFluent</span>
+          </Link>
+
+          {/* Desktop Nav */}
+          {isAuthenticated && (
+            <div className="hidden md:flex items-center gap-1">
+              {[
+                { to: '/dashboard', label: 'Dashboard' },
+                { to: '/lessons', label: 'Lessons' },
+                { to: '/practice', label: 'Practice' },
+                { to: '/assessment', label: 'Assessment' },
+              ].map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Right side */}
+          <div className="flex items-center gap-3">
+            {isAuthenticated ? (
+              <>
+                {/* Upgrade button */}
+                {user?.plan === 'free' && (
+                  <Link
+                    to="/pricing"
+                    className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                  >
+                    <Crown className="w-4 h-4" />
+                    Upgrade
+                  </Link>
+                )}
+
+                {/* Notifications */}
+                <button className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                  <Bell className="w-5 h-5 text-gray-500" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                </button>
+
+                {/* Profile dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setProfileOpen(!profileOpen)}
+                    className="flex items-center gap-2 p-1.5 pr-3 rounded-xl hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
+                      <span className="text-sm font-bold text-primary-700">
+                        {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                    <span className="hidden sm:block text-sm font-medium text-gray-700">
+                      {user?.name?.split(' ')[0]}
+                    </span>
+                  </button>
+
+                  {profileOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2">
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="font-medium text-gray-900">{user?.name}</p>
+                        <p className="text-xs text-gray-500">{user?.email}</p>
+                      </div>
+                      <Link
+                        to="/profile"
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setProfileOpen(false)}
+                      >
+                        <User className="w-4 h-4" />
+                        Profile
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Link to="/login" className="btn-secondary text-sm">
+                  Sign In
+                </Link>
+                <Link to="/register" className="btn-primary text-sm">
+                  Get Started
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile menu button */}
+            <button
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile menu */}
+        {mobileOpen && isAuthenticated && (
+          <div className="md:hidden py-4 border-t border-gray-100">
+            {[
+              { to: '/dashboard', label: 'Dashboard' },
+              { to: '/lessons', label: 'Lessons' },
+              { to: '/practice', label: 'Practice' },
+              { to: '/assessment', label: 'Assessment' },
+              { to: '/pricing', label: 'Pricing' },
+            ].map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium"
+                onClick={() => setMobileOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;

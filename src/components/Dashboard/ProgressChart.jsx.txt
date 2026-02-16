@@ -1,0 +1,71 @@
+import React from 'react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from 'recharts';
+
+const ProgressChart = ({ data }) => {
+  return (
+    <div className="space-y-6">
+      {/* Practice time bars */}
+      <div>
+        <h3 className="text-sm font-medium text-gray-500 mb-3">Practice Minutes</h3>
+        <ResponsiveContainer width="100%" height={120}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+            <XAxis dataKey="day" axisLine={false} tickLine={false} fontSize={12} />
+            <Tooltip
+              contentStyle={{
+                borderRadius: '12px',
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}
+            />
+            <Bar dataKey="minutes" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Score trend */}
+      <div>
+        <h3 className="text-sm font-medium text-gray-500 mb-3">Score Trend</h3>
+        <ResponsiveContainer width="100%" height={120}>
+          <AreaChart data={data}>
+            <defs>
+              <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+            <XAxis dataKey="day" axisLine={false} tickLine={false} fontSize={12} />
+            <YAxis domain={[0, 100]} axisLine={false} tickLine={false} fontSize={12} />
+            <Tooltip
+              contentStyle={{
+                borderRadius: '12px',
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="score"
+              stroke="#8b5cf6"
+              strokeWidth={2}
+              fill="url(#scoreGradient)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
+export default ProgressChart;

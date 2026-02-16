@@ -1,0 +1,59 @@
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  BookOpen,
+  Mic2,
+  BarChart3,
+  Trophy,
+  Settings,
+  MessageSquare,
+  Volume2,
+  Brain,
+} from 'lucide-react';
+
+const navItems = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/lessons', icon: BookOpen, label: 'Lessons' },
+  { to: '/practice', icon: Mic2, label: 'Practice' },
+  { to: '/practice/conversation', icon: MessageSquare, label: 'Conversation' },
+  { to: '/practice/pronunciation', icon: Volume2, label: 'Pronunciation' },
+  { to: '/practice/vocabulary', icon: Brain, label: 'Vocabulary' },
+  { to: '/assessment', icon: BarChart3, label: 'Assessment' },
+  { to: '/achievements', icon: Trophy, label: 'Achievements' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
+];
+
+const Sidebar = () => {
+  return (
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 min-h-[calc(100vh-64px)] p-4">
+      <nav className="space-y-1 flex-1">
+        {navItems.map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`
+            }
+          >
+            <Icon className="w-5 h-5" />
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* Streak card */}
+      <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-4 text-white mt-4">
+        <div className="text-3xl mb-1">🔥</div>
+        <p className="font-bold text-lg">7 Day Streak!</p>
+        <p className="text-white/80 text-sm">Keep going! Practice today to maintain your streak.</p>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;

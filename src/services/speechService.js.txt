@@ -1,0 +1,209 @@
+export class SpeechService {
+  constructor() {
+    this.recognition = null;
+    this.synthesis = window.speechSynthesis;
+    this.isRecording = false;
+    this.mediaRecorder = null;
+    this.audioChunks = [];
+  }
+
+  // Initialize speech recognition
+  initRecognition(options = {}) {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      throw new Error('Speech recognition is not supported in this browser');
+    }
+
+    this.recognition = new SpeechRecognition();
+    this.recognition.continuous = options.continuous || false;
+    this.recognition.interimResults = options.interimResults || true;
+    this.recognition.lang = options.lang || 'en-US';
+    this.recognition.maxAlternatives = options.maxAlternatives || 3;
+
+    return this.recognition;
+  }
+
+  // Start listening
+  startListening(callbacks = {}) {
+    if (!this.recognition) {
+      this.initRecognition();
+    }
+
+    const { onResult, onInterim, onError, onEnd, onStart } = callbacks;
+
+    this.recognition.onstart = () => {
+      this.isRecording = true;
+      onStart?.();
+    };
+
+    this.recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        const confidence = event.results[i][0].confidence;
+
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+          onResult?.({ transcript: finalTranscript, confidence });
+        } else {
+          interimTranscript += transcript;
+          onInterim?.({ transcript: interimTranscript });
+        }
+      }
+    };
+
+    this.recognition.onerror = (event) => {
+      this.isRecording = false;
+      onError?.(event.error);
+    };
+
+    this.recognition.onend = () => {
+      this.isRecording = false;
+      onEnd?.();
+    };
+
+    this.recognition.start();
+  }
+
+  // Stop listening
+  stopListening() {
+    if (this.recognition && this.isRecording) {
+      this.recognition.stop();
+      this.isRecording = false;
+    }
+  }
+
+  // Text to speech
+  speak(text, options = {}) {
+    return new Promise((resolve, reject) => {
+      if (!this.synthesis) {
+        reject(new Error('Speech synthesis is not supported'));
+        return;
+      }
+
+      // Cancel any ongoing speech
+      this.synthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = options.lang || 'en-US';
+      utterance.rate = options.rate || 0.9;
+      utterance.pitch = options.pitch || 1;
+      utterance.volume = options.volume || 1;
+
+      // Select voice
+      const voices = this.synthesis.getVoices();
+      const preferredVoice = voices.find(
+        (v) =>
+          v.lang.startsWith('en') &&
+          (options.voice
+            ? v.name.toLowerCase().includes(options.voice.toLowerCase())
+            : v.name.includes('Google') || v.name.includes('Natural'))
+      );
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.onend = () => resolve();
+      utterance.onerror = (e) => reject(e);
+
+      // Highlight words callback
+      if (options.onWord) {
+        utterance.onboundary = (event) => {
+          if (event.name === 'word') {
+            options.onWord({
+              charIndex: event.charIndex,
+              charLength: event.charLength,
+            });
+          }
+        };
+      }
+
+      this.synthesis.speak(utterance);
+    });
+  }
+
+  // Stop speaking
+  stopSpeaking() {
+    if (this.synthesis) {
+      this.synthesis.cancel();
+    }
+  }
+
+  // Get available voices
+  getVoices() {
+    return new Promise((resolve) => {
+      const voices = this.synthesis.getVoices();
+      if (voices.length) {
+        resolve(voices.filter((v) => v.lang.startsWith('en')));
+        return;
+      }
+      this.synthesis.onvoiceschanged = () => {
+        resolve(this.synthesis.getVoices().filter((v) => v.lang.startsWith('en')));
+      };
+    });
+  }
+
+  // Record audio as blob
+  async startAudioRecording() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    this.mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'audio/webm;codecs=opus',
+    });
+    this.audioChunks = [];
+
+    this.mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        this.audioChunks.push(event.data);
+      }
+    };
+
+    this.mediaRecorder.start(100); // Collect data every 100ms
+  }
+
+  stopAudioRecording() {
+    return new Promise((resolve) => {
+      if (!this.mediaRecorder) {
+        resolve(null);
+        return;
+      }
+
+      this.mediaRecorder.onstop = () => {
+        const blob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        const tracks = this.mediaRecorder.stream.getTracks();
+        tracks.forEach((track) => track.stop());
+        resolve(blob);
+      };
+
+      this.mediaRecorder.stop();
+    });
+  }
+
+  // Get audio level for visualization
+  async getAudioAnalyzer() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyzer = audioContext.createAnalyser();
+    analyzer.fftSize = 256;
+    source.connect(analyzer);
+
+    return {
+      analyzer,
+      getLevel: () => {
+        const data = new Uint8Array(analyzer.frequencyBinCount);
+        analyzer.getByteFrequencyData(data);
+        return data.reduce((sum, val) => sum + val, 0) / data.length / 255;
+      },
+      cleanup: () => {
+        stream.getTracks().forEach((track) => track.stop());
+        audioContext.close();
+      },
+    };
+  }
+}
+
+export const speechService = new SpeechService();

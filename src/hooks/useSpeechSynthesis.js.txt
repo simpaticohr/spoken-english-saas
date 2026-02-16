@@ -1,0 +1,39 @@
+import { useState, useCallback, useEffect } from 'react';
+import { speechService } from '../services/speechService';
+
+export const useSpeechSynthesis = () => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voices, setVoices] = useState([]);
+  const [currentWordIndex, setCurrentWordIndex] = useState(-1);
+
+  useEffect(() => {
+    speechService.getVoices().then(setVoices);
+  }, []);
+
+  const speak = useCallback(async (text, options = {}) => {
+    setIsSpeaking(true);
+    setCurrentWordIndex(-1);
+    try {
+      await speechService.speak(text, {
+        ...options,
+        onWord: ({ charIndex }) => {
+          const words = text.substring(0, charIndex).split(' ');
+          setCurrentWordIndex(words.length - 1);
+        },
+      });
+    } catch (err) {
+      console.error('Speech synthesis error:', err);
+    } finally {
+      setIsSpeaking(false);
+      setCurrentWordIndex(-1);
+    }
+  }, []);
+
+  const stop = useCallback(() => {
+    speechService.stopSpeaking();
+    setIsSpeaking(false);
+    setCurrentWordIndex(-1);
+  }, []);
+
+  return { speak, stop, isSpeaking, voices, currentWordIndex };
+};

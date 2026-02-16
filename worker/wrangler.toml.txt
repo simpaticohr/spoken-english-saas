@@ -1,0 +1,29 @@
+name = "spoken-english-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ENVIRONMENT = "production"
+ALLOWED_ORIGINS = "https://yourusername.github.io"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "spoken-english-db"
+database_id = "your-database-id-here"
+
+# KV Namespace for caching/sessions
+[[kv_namespaces]]
+binding = "CACHE"
+id = "your-kv-namespace-id"
+
+# R2 Bucket for audio storage
+[[r2_buckets]]
+binding = "AUDIO_BUCKET"
+bucket_name = "spoken-english-audio"
+
+# Secrets (set via wrangler secret put)
+# JWT_SECRET
+# OPENAI_API_KEY
+# STRIPE_SECRET_KEY
+# STRIPE_WEBHOOK_SECRET

@@ -1,0 +1,138 @@
+import React, { useEffect, useState } from 'react';
+import { useLessonStore } from '../../store/lessonStore';
+import LessonCard from './LessonCard';
+import { LESSON_CATEGORIES } from '../../utils/constants';
+import { Search, Filter } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+const LessonList = () => {
+  const { fetchLessons, getFilteredLessons, filters, setFilters, loading, lessons } =
+    useLessonStore();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchLessons().catch(() => {
+      // Fallback demo data handled in store
+    });
+  }, []);
+
+  // Demo lessons if API not connected
+  const demoLessons = [
+    { id: 1, title: 'Greetings & Introductions', category: 'conversation', level: 'beginner', duration: 15, description: 'Learn common greetings and how to introduce yourself.', completed: true, score: 85, lessons_count: 8 },
+    { id: 2, title: 'Vowel Sounds: /æ/ vs /ɛ/', category: 'pronunciation', level: 'beginner', duration: 12, description: 'Master the difference between short vowel sounds.', completed: false, progress: 40, lessons_count: 6 },
+    { id: 3, title: 'Shopping & Transactions', category: 'conversation', level: 'beginner', duration: 20, description: 'Practice conversations for shopping situations.', completed: false, progress: 0, lessons_count: 10 },
+    { id: 4, title: '100 Essential Words', category: 'vocabulary', level: 'beginner', duration: 25, description: 'Build your foundation with the most common English words.', completed: false, progress: 65, lessons_count: 12 },
+    { id: 5, title: 'Present Tense in Conversation', category: 'grammar', level: 'beginner', duration: 18, description: 'Use present tense naturally in spoken English.', completed: true, score: 92, lessons_count: 8 },
+    { id: 6, title: 'Linked Sounds & Contractions', category: 'fluency', level: 'intermediate', duration: 15, description: 'Sound more natural with connected speech.', completed: false, progress: 20, lessons_count: 7 },
+    { id: 7, title: 'TH Sound Practice', category: 'pronunciation', level: 'intermediate', duration: 10, description: 'Perfect the voiced and voiceless TH sounds.', completed: false, progress: 0, lessons_count: 5 },
+    { id: 8, title: 'Job Interview Preparation', category: 'business', level: 'intermediate', duration: 30, description: 'Prepare for common interview questions in English.', completed: false, progress: 10, lessons_count: 15 },
+    { id: 9, title: 'Common Idioms & Expressions', category: 'idioms', level: 'intermediate', duration: 20, description: 'Understand and use popular English idioms.', completed: false, progress: 0, lessons_count: 10 },
+    { id: 10, title: 'News & Current Events Discussion', category: 'conversation', level: 'advanced', duration: 25, description: 'Discuss complex topics fluently.', completed: false, progress: 0, lessons_count: 8 },
+    { id: 11, title: 'Podcast Listening Practice', category: 'listening', level: 'intermediate', duration: 20, description: 'Improve comprehension with real podcast clips.', completed: false, progress: 30, lessons_count: 10 },
+    { id: 12, title: 'Persuasive Speaking', category: 'fluency', level: 'advanced', duration: 25, description: 'Learn to make compelling arguments in English.', completed: false, progress: 0, lessons_count: 8 },
+  ];
+
+  const displayLessons = lessons.length > 0 ? getFilteredLessons() : demoLessons.filter(l => {
+    if (filters.category !== 'all' && l.category !== filters.category) return false;
+    if (filters.level !== 'all' && l.level !== filters.level) return false;
+    if (searchQuery && !l.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Lessons</h1>
+        <p className="text-gray-500">Choose a lesson to improve your spoken English skills</p>
+      </div>
+
+      {/* Category Filter */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
+        <button
+          onClick={() => setFilters({ category: 'all' })}
+          className={`shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            filters.category === 'all'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          All
+        </button>
+        {LESSON_CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setFilters({ category: cat.id })}
+            className={`shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+              filters.category === cat.id
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {cat.icon} {cat.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Search & Level Filter */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-field pl-11"
+            placeholder="Search lessons..."
+          />
+        </div>
+        <select
+          value={filters.level}
+          onChange={(e) => setFilters({ level: e.target.value })}
+          className="input-field w-full sm:w-48"
+        >
+          <option value="all">All Levels</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+
+      {/* Lesson Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="card animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
+              <div className="h-3 bg-gray-100 rounded w-full mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      ) : displayLessons.length > 0 ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
+          {displayLessons.map((lesson, index) => (
+            <motion.div
+              key={lesson.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <LessonCard lesson={lesson} />
+            </motion.div>
+          ))}
+        </motion.div>
+      ) : (
+        <div className="text-center py-12">
+          <Filter className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 font-medium">No lessons found</p>
+          <p className="text-gray-400 text-sm">Try adjusting your filters</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LessonList;

@@ -1,0 +1,91 @@
+import axios from 'axios';
+import { API_BASE_URL } from '../utils/constants';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30000,
+});
+
+// Request interceptor - attach token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor - handle errors
+api.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      window.location.href = '/spoken-english-saas/login';
+    }
+    return Promise.reject(error.response?.data || { message: 'Network error' });
+  }
+);
+
+// Auth endpoints
+export const authAPI = {
+  register: (data) => api.post('/auth/register', data),
+  login: (data) => api.post('/auth/login', data),
+  me: () => api.get('/auth/me'),
+  updateProfile: (data) => api.put('/auth/profile', data),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
+};
+
+// Lesson endpoints
+export const lessonAPI = {
+  getAll: (params) => api.get('/lessons', { params }),
+  getById: (id) => api.get(`/lessons/${id}`),
+  getByCategory: (category) => api.get(`/lessons/category/${category}`),
+  complete: (id, data) => api.post(`/lessons/${id}/complete`, data),
+  getRecommended: () => api.get('/lessons/recommended'),
+};
+
+// Practice endpoints
+export const practiceAPI = {
+  analyzeSpeech: (data) => api.post('/practice/analyze-speech', data),
+  getConversationPrompt: (data) => api.post('/practice/conversation', data),
+  submitPronunciation: (data) => api.post('/practice/pronunciation', data),
+  getVocabularyExercise: (level) => api.get(`/practice/vocabulary/${level}`),
+  getFluencyExercise: (level) => api.get(`/practice/fluency/${level}`),
+  saveSession: (data) => api.post('/practice/session', data),
+};
+
+// Assessment endpoints
+export const assessmentAPI = {
+  start: (type) => api.post('/assessment/start', { type }),
+  submit: (id, data) => api.post(`/assessment/${id}/submit`, data),
+  getResults: (id) => api.get(`/assessment/${id}/results`),
+  getHistory: () => api.get('/assessment/history'),
+};
+
+// User progress endpoints
+export const progressAPI = {
+  getDashboard: () => api.get('/user/dashboard'),
+  getStats: () => api.get('/user/stats'),
+  getHistory: (params) => api.get('/user/history', { params }),
+  getAchievements: () => api.get('/user/achievements'),
+  getLeaderboard: () => api.get('/user/leaderboard'),
+};
+
+// Payment endpoints
+export const paymentAPI = {
+  createCheckout: (planId) => api.post('/payment/create-checkout', { planId }),
+  getSubscription: () => api.get('/payment/subscription'),
+  cancelSubscription: () => api.post('/payment/cancel'),
+  getInvoices: () => api.get('/payment/invoices'),
+};
+
+export default api;

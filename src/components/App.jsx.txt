@@ -1,0 +1,134 @@
+import React, { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
+import Navbar from './Layout/Navbar';
+import Sidebar from './Layout/Sidebar';
+import Footer from './Layout/Footer';
+
+// Lazy load pages
+const Login = lazy(() => import('./Auth/Login'));
+const Register = lazy(() => import('./Auth/Register'));
+const Dashboard = lazy(() => import('./Dashboard/Dashboard'));
+const LessonList = lazy(() => import('./Lessons/LessonList'));
+const LessonDetail = lazy(() => import('./Lessons/LessonDetail'));
+const SpeechPractice = lazy(() => import('./Practice/SpeechPractice'));
+const ConversationPractice = lazy(() => import('./Practice/ConversationPractice'));
+const PronunciationChecker = lazy(() => import('./Practice/PronunciationChecker'));
+const VocabularyPractice = lazy(() => import('./Practice/VocabularyPractice'));
+const AssessmentTest = lazy(() => import('./Assessment/AssessmentTest'));
+const PricingPage = lazy(() => import('./Payment/PricingPage'));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return children;
+};
+
+const AuthLayout = ({ children }) => (
+  <Suspense fallback={<LoadingFallback />}>
+    {children}
+  </Suspense>
+);
+
+const AppLayout = ({ children }) => (
+  <div className="min-h-screen bg-gray-50">
+    <Navbar />
+    <div className="flex">
+      <Sidebar />
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
+        <Suspense fallback={<LoadingFallback />}>
+          {children}
+        </Suspense>
+      </main>
+    </div>
+  </div>
+);
+
+const App = () => {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<AuthLayout><Login /></AuthLayout>} />
+      <Route path="/register" element={<AuthLayout><Register /></AuthLayout>} />
+      <Route path="/pricing" element={<AuthLayout><><Navbar /><PricingPage /><Footer /></></AuthLayout>} />
+
+      {/* Protected routes */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <AppLayout><Dashboard /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/lessons"
+        element={
+          <ProtectedRoute>
+            <AppLayout><LessonList /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/lessons/:id"
+        element={
+          <ProtectedRoute>
+            <AppLayout><LessonDetail /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/practice"
+        element={
+          <ProtectedRoute>
+            <AppLayout><SpeechPractice /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/practice/conversation"
+        element={
+          <ProtectedRoute>
+            <AppLayout><ConversationPractice /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/practice/pronunciation"
+        element={
+          <ProtectedRoute>
+            <AppLayout><PronunciationChecker /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/practice/vocabulary"
+        element={
+          <ProtectedRoute>
+            <AppLayout><VocabularyPractice /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/assessment"
+        element={
+          <ProtectedRoute>
+            <AppLayout><AssessmentTest /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Redirects */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+};
+
+export default App;

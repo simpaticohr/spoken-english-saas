@@ -1,0 +1,32 @@
+import { useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
+
+export const useApi = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const execute = useCallback(async (apiCall, options = {}) => {
+    const { showSuccess, showError = true, successMessage } = options;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await apiCall();
+      if (showSuccess && successMessage) {
+        toast.success(successMessage);
+      }
+      return result;
+    } catch (err) {
+      const message = err?.message || 'Something went wrong';
+      setError(message);
+      if (showError) {
+        toast.error(message);
+      }
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { loading, error, execute };
+};

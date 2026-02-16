@@ -1,0 +1,248 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
+import {
+  Mic,
+  MicOff,
+  Play,
+  ChevronRight,
+  Clock,
+  BarChart3,
+  CheckCircle,
+  Target,
+  Volume2,
+} from 'lucide-react';
+import { getScoreBg } from '../../utils/helpers';
+
+const assessmentQuestions = [
+  {
+    type: 'repeat',
+    instruction: 'Listen and repeat the sentence',
+    text: 'I have been studying English for two years now.',
+    category: 'pronunciation',
+  },
+  {
+    type: 'repeat',
+    instruction: 'Listen and repeat',
+    text: 'The meeting has been rescheduled to next Thursday.',
+    category: 'pronunciation',
+  },
+  {
+    type: 'describe',
+    instruction: 'Describe in 30 seconds',
+    text: 'Describe your favorite place to visit and why you like it.',
+    category: 'fluency',
+    timeLimit: 30,
+  },
+  {
+    type: 'answer',
+    instruction: 'Answer the question',
+    text: 'What are the advantages and disadvantages of working from home?',
+    category: 'fluency',
+    timeLimit: 45,
+  },
+  {
+    type: 'repeat',
+    instruction: 'Listen and repeat this tongue twister',
+    text: 'Peter Piper picked a peck of pickled peppers.',
+    category: 'pronunciation',
+  },
+];
+
+const AssessmentTest = () => {
+  const [started, setStarted] = useState(false);
+  const [currentQ, setCurrentQ] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [finished, setFinished] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const { speak, isSpeaking } = useSpeechSynthesis();
+  const { isListening, transcript, startListening, stopListening, resetTranscript } =
+    useSpeechRecognition();
+
+  const question = assessmentQuestions[currentQ];
+
+  const handleSubmitAnswer = () => {
+    stopListening();
+    const answer = {
+      question,
+      response: transcript,
+      score: Math.floor(Math.random() * 30) + 70, // Demo score
+    };
+    const newAnswers = [...answers, answer];
+    setAnswers(newAnswers);
+    resetTranscript();
+
+    if (currentQ < assessmentQuestions.length - 1) {
+      setCurrentQ(currentQ + 1);
+    } else {
+      setFinished(true);
+    }
+  };
+
+  const overallScore = answers.length > 0
+    ? Math.round(answers.reduce((sum, a) => sum + a.score, 0) / answers.length)
+    : 0;
+
+  const getLevel = (score) => {
+    if (score >= 90) return { level: 'Advanced', color: 'text-purple-600' };
+    if (score >= 70) return { level: 'Intermediate', color: 'text-blue-600' };
+    if (score >= 50) return { level: 'Pre-Intermediate', color: 'text-yellow-600' };
+    return { level: 'Beginner', color: 'text-green-600' };
+  };
+
+  if (!started) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="card text-center py-12">
+          <div className="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Target className="w-8 h-8 text-primary-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">English Level Assessment</h1>
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            Take this short test to evaluate your English speaking skills.
+            The assessment includes pronunciation, fluency, and comprehension tasks.
+          </p>
+          <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto mb-8">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{assessmentQuestions.length}</p>
+              <p className="text-xs text-gray-500">Questions</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">5</p>
+              <p className="text-xs text-gray-500">Minutes</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">3</p>
+              <p className="text-xs text-gray-500">Skills</p>
+            </div>
+          </div>
+          <button onClick={() => setStarted(true)} className="btn-primary">
+            Start Assessment
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (finished) {
+    const levelInfo = getLevel(overallScore);
+    return (
+      <div className="max-w-2xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card text-center py-12">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Assessment Complete!</h2>
+          <p className="text-gray-500 mb-8">Here are your results</p>
+
+          <div className="bg-gray-50 rounded-2xl p-8 mb-8 max-w-sm mx-auto">
+            <p className="text-5xl font-bold text-gray-900 mb-2">{overallScore}%</p>
+            <p className={`text-xl font-semibold ${levelInfo.color}`}>{levelInfo.level}</p>
+          </div>
+
+          {/* Category scores */}
+          <div className="space-y-3 max-w-md mx-auto mb-8">
+            {answers.map((a, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-sm text-gray-700 capitalize">{a.question.category}</span>
+                <span className={`text-sm font-bold px-3 py-1 rounded-lg ${getScoreBg(a.score)}`}>
+                  {a.score}%
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => {
+                setStarted(false);
+                setFinished(false);
+                setCurrentQ(0);
+                setAnswers([]);
+              }}
+              className="btn-secondary"
+            >
+              Retake Test
+            </button>
+            <button
+              onClick={() => window.location.href = '/spoken-english-saas/lessons'}
+              className="btn-primary"
+            >
+              Start Learning
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      {/* Progress */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex gap-1 flex-1">
+          {assessmentQuestions.map((_, i) => (
+            <div
+              key={i}
+              className={`h-2 flex-1 rounded-full ${
+                i < currentQ ? 'bg-green-500' : i === currentQ ? 'bg-primary-500' : 'bg-gray-200'
+              }`}
+            />
+          ))}
+        </div>
+        <span className="text-sm text-gray-500">
+          {currentQ + 1}/{assessmentQuestions.length}
+        </span>
+      </div>
+
+      <motion.div key={currentQ} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="card">
+        <span className="text-xs font-semibold text-primary-600 uppercase tracking-wide">
+          {question.category}
+        </span>
+        <h2 className="text-lg font-bold text-gray-900 mt-2 mb-1">{question.instruction}</h2>
+
+        <div className="bg-gray-50 rounded-xl p-6 my-6">
+          <p className="text-lg text-gray-800">{question.text}</p>
+          {question.type === 'repeat' && (
+            <button
+              onClick={() => speak(question.text, { rate: 0.8 })}
+              className="mt-3 flex items-center gap-2 text-sm text-primary-600"
+            >
+              <Volume2 className="w-4 h-4" /> Listen
+            </button>
+          )}
+        </div>
+
+        <div className="text-center py-6">
+          <button
+            onClick={() => (isListening ? stopListening() : startListening())}
+            className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg transition-all ${
+              isListening
+                ? 'bg-red-500 text-white pulse-recording shadow-red-500/30'
+                : 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-600/30'
+            }`}
+          >
+            {isListening ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
+          </button>
+          <p className="text-sm text-gray-500 mb-4">
+            {isListening ? '🔴 Recording...' : 'Tap to record your answer'}
+          </p>
+          {transcript && (
+            <div className="p-3 bg-blue-50 rounded-xl mb-4">
+              <p className="text-gray-800">{transcript}</p>
+            </div>
+          )}
+          {transcript && (
+            <button onClick={handleSubmitAnswer} className="btn-primary flex items-center gap-2 mx-auto">
+              Submit & Next
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default AssessmentTest;

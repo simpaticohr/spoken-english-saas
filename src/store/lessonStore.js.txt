@@ -1,0 +1,74 @@
+import { create } from 'zustand';
+import { lessonAPI } from '../services/api';
+
+export const useLessonStore = create((set, get) => ({
+  lessons: [],
+  currentLesson: null,
+  recommended: [],
+  loading: false,
+  filters: {
+    category: 'all',
+    level: 'all',
+    search: '',
+  },
+
+  fetchLessons: async (params) => {
+    set({ loading: true });
+    try {
+      const lessons = await lessonAPI.getAll(params);
+      set({ lessons: lessons.data, loading: false });
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
+  },
+
+  fetchLesson: async (id) => {
+    set({ loading: true });
+    try {
+      const lesson = await lessonAPI.getById(id);
+      set({ currentLesson: lesson, loading: false });
+      return lesson;
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
+  },
+
+  fetchRecommended: async () => {
+    try {
+      const recommended = await lessonAPI.getRecommended();
+      set({ recommended: recommended.data });
+    } catch (error) {
+      console.error('Failed to fetch recommended lessons:', error);
+    }
+  },
+
+  completeLesson: async (id, data) => {
+    try {
+      const result = await lessonAPI.complete(id, data);
+      const lessons = get().lessons.map((l) =>
+        l.id === id ? { ...l, completed: true, score: data.score } : l
+      );
+      set({ lessons });
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  setFilters: (filters) => {
+    set({ filters: { ...get().filters, ...filters } });
+  },
+
+  getFilteredLessons: () => {
+    const { lessons, filters } = get();
+    return lessons.filter((lesson) => {
+      if (filters.category !== 'all' && lesson.category !== filters.category) return false;
+      if (filters.level !== 'all' && lesson.level !== filters.level) return false;
+      if (filters.search && !lesson.title.toLowerCase().includes(filters.search.toLowerCase()))
+        return false;
+      return true;
+    });
+  },
+}));

@@ -1,0 +1,312 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
+import {
+  Mic,
+  MicOff,
+  Volume2,
+  RotateCcw,
+  ChevronRight,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  ArrowLeft,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { getScoreBg } from '../../utils/helpers';
+
+const sentences = [
+  { id: 1, text: "The weather is beautiful today.", level: 'beginner', focus: 'TH sound, vowels' },
+  { id: 2, text: "She sells seashells by the seashore.", level: 'beginner', focus: 'S and SH sounds' },
+  { id: 3, text: "I would like to schedule an appointment.", level: 'intermediate', focus: 'Formal speech' },
+  { id: 4, text: "Could you please repeat that more slowly?", level: 'intermediate', focus: 'Polite requests' },
+  { id: 5, text: "The committee decided to postpone the meeting.", level: 'advanced', focus: 'Complex vocabulary' },
+  { id: 6, text: "I appreciate your thoughtful consideration.", level: 'advanced', focus: 'Multi-syllable words' },
+  { id: 7, text: "How much does this cost?", level: 'beginner', focus: 'Question intonation' },
+  { id: 8, text: "I've been working here for three years.", level: 'intermediate', focus: 'Present perfect' },
+];
+
+const PronunciationChecker = () => {
+  const navigate = useNavigate();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [results, setResults] = useState([]);
+  const [showResult, setShowResult] = useState(false);
+  const { speak, isSpeaking } = useSpeechSynthesis();
+  const {
+    isListening,
+    transcript,
+    confidence,
+    startListening,
+    stopListening,
+    resetTranscript,
+  } = useSpeechRecognition();
+
+  const currentSentence = sentences[currentIndex];
+
+  const calculateScore = (original, spoken) => {
+    const origWords = original.toLowerCase().replace(/[.,!?]/g, '').split(/\s+/);
+    const spokenWords = spoken.toLowerCase().replace(/[.,!?]/g, '').split(/\s+/);
+
+    let matches = 0;
+    const wordResults = origWords.map((word) => {
+      const found = spokenWords.includes(word);
+      if (found) matches++;
+      return { word, correct: found };
+    });
+
+    const score = Math.round((matches / origWords.length) * 100);
+    return { score, wordResults };
+  };
+
+  const handleCheck = () => {
+    if (!transcript.trim()) return;
+    stopListening();
+
+    const { score, wordResults } = calculateScore(currentSentence.text, transcript);
+    const result = {
+      sentence: currentSentence,
+      spoken: transcript,
+      score,
+      wordResults,
+      confidence: Math.round(confidence * 100),
+    };
+
+    setResults([...results, result]);
+    setShowResult(true);
+  };
+
+  const handleNext = () => {
+    setShowResult(false);
+    resetTranscript();
+    if (currentIndex < sentences.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const handleRetry = () => {
+    setShowResult(false);
+    resetTranscript();
+  };
+
+  useEffect(() => {
+    if (transcript && !isListening) {
+      handleCheck();
+    }
+  }, [isListening]);
+
+  const latestResult = results[results.length - 1];
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => navigate('/practice')} className="p-2 rounded-xl hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Pronunciation Check</h1>
+          <p className="text-gray-500">Read the sentence aloud and get instant feedback</p>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div className="flex gap-1 mb-6">
+        {sentences.map((_, i) => (
+          <div
+            key={i}
+            className={`h-1.5 flex-1 rounded-full ${
+              i < currentIndex
+                ? 'bg-green-500'
+                : i === currentIndex
+                ? 'bg-primary-500'
+                : 'bg-gray-200'
+            }`}
+          />
+        ))}
+      </div>
+
+      <div className="card">
+        {/* Sentence to read */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-primary-600 uppercase tracking-wide">
+              Sentence {currentIndex + 1} of {sentences.length}
+            </span>
+            <span className="text-xs text-gray-400">{currentSentence.focus}</span>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-6">
+            <p className="text-xl sm:text-2xl font-medium text-gray-800 text-center leading-relaxed">
+              {showResult && latestResult ? (
+                latestResult.wordResults.map((wr, i) => (
+                  <span
+                    key={i}
+                    className={`${
+                      wr.correct ? 'text-green-600' : 'text-red-500 underline decoration-wavy'
+                    } mr-1`}
+                  >
+                    {wr.word}
+                  </span>
+                ))
+              ) : (
+                currentSentence.text
+              )}
+            </p>
+          </div>
+          <button
+            onClick={() => speak(currentSentence.text, { rate: 0.8 })}
+            disabled={isSpeaking}
+            className="mt-3 flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium mx-auto"
+          >
+            <Volume2 className="w-4 h-4" />
+            {isSpeaking ? 'Playing...' : 'Listen to correct pronunciation'}
+          </button>
+        </div>
+
+        {/* Recording */}
+        {!showResult && (
+          <div className="text-center py-6">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => (isListening ? stopListening() : startListening())}
+              className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 transition-all shadow-lg ${
+                isListening
+                  ? 'bg-red-500 text-white pulse-recording shadow-red-500/30'
+                  : 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-600/30'
+              }`}
+            >
+              {isListening ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
+            </motion.button>
+
+            <p className="text-gray-500 text-sm">
+              {isListening ? '🔴 Listening... Click to stop' : 'Click to start recording'}
+            </p>
+
+            {/* Live transcript */}
+            {transcript && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-4 bg-blue-50 rounded-xl"
+              >
+                <p className="text-sm text-gray-500 mb-1">You said:</p>
+                <p className="text-gray-800 font-medium">{transcript}</p>
+              </motion.div>
+            )}
+
+            {/* Waveform visualization */}
+            {isListening && (
+              <div className="flex items-center justify-center gap-1 mt-4 h-8">
+                {[...Array(20)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1 bg-primary-500 rounded-full waveform-bar"
+                    style={{
+                      height: `${Math.random() * 100}%`,
+                      animationDelay: `${i * 0.05}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Result */}
+        <AnimatePresence>
+          {showResult && latestResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
+            >
+              {/* Score */}
+              <div className="text-center py-4">
+                <div
+                  className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-lg font-bold ${getScoreBg(
+                    latestResult.score
+                  )}`}
+                >
+                  {latestResult.score >= 80 ? (
+                    <CheckCircle className="w-6 h-6" />
+                  ) : latestResult.score >= 50 ? (
+                    <AlertCircle className="w-6 h-6" />
+                  ) : (
+                    <XCircle className="w-6 h-6" />
+                  )}
+                  {latestResult.score}% Accuracy
+                </div>
+              </div>
+
+              {/* What you said */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-sm text-gray-500 mb-1">You said:</p>
+                <p className="text-gray-800">{latestResult.spoken}</p>
+              </div>
+
+              {/* Feedback */}
+              <div
+                className={`rounded-xl p-4 ${
+                  latestResult.score >= 80
+                    ? 'bg-green-50'
+                    : latestResult.score >= 50
+                    ? 'bg-yellow-50'
+                    : 'bg-red-50'
+                }`}
+              >
+                <p className="font-medium mb-1">
+                  {latestResult.score >= 80
+                    ? '🎉 Excellent pronunciation!'
+                    : latestResult.score >= 50
+                    ? '👍 Good try! Focus on the highlighted words.'
+                    : '🔄 Let\'s try again. Listen carefully to the pronunciation.'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Recognition confidence: {latestResult.confidence}%
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <button onClick={handleRetry} className="btn-secondary flex-1 flex items-center justify-center gap-2">
+                  <RotateCcw className="w-4 h-4" />
+                  Try Again
+                </button>
+                <button onClick={handleNext} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Results Summary */}
+      {results.length > 0 && (
+        <div className="card mt-6">
+          <h3 className="font-semibold text-gray-900 mb-4">Session Results</h3>
+          <div className="space-y-2">
+            {results.map((result, i) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <p className="text-sm text-gray-700 truncate flex-1 mr-4">
+                  {result.sentence.text}
+                </p>
+                <span className={`text-sm font-bold px-3 py-1 rounded-lg ${getScoreBg(result.score)}`}>
+                  {result.score}%
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+            <p className="text-lg font-bold text-gray-900">
+              Average: {Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length)}%
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default PronunciationChecker;

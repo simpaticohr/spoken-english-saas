@@ -1,0 +1,283 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
+import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+import {
+  ArrowLeft,
+  Volume2,
+  Mic,
+  MicOff,
+  CheckCircle,
+  XCircle,
+  ChevronRight,
+  RotateCcw,
+  BookOpen,
+} from 'lucide-react';
+
+const vocabularyWords = [
+  {
+    word: 'accommodate',
+    pronunciation: '/əˈkɑːmədeɪt/',
+    meaning: 'To provide lodging or room for; to adjust to',
+    example: 'The hotel can accommodate up to 200 guests.',
+    synonyms: ['house', 'lodge', 'adapt'],
+  },
+  {
+    word: 'benevolent',
+    pronunciation: '/bəˈnɛvələnt/',
+    meaning: 'Kind, generous, charitable',
+    example: 'The benevolent donor gave millions to charity.',
+    synonyms: ['kind', 'generous', 'charitable'],
+  },
+  {
+    word: 'comprehensive',
+    pronunciation: '/ˌkɑːmprɪˈhɛnsɪv/',
+    meaning: 'Complete, thorough, including all elements',
+    example: 'We need a comprehensive plan for the project.',
+    synonyms: ['thorough', 'complete', 'exhaustive'],
+  },
+  {
+    word: 'diligent',
+    pronunciation: '/ˈdɪlɪdʒənt/',
+    meaning: 'Showing careful and persistent work or effort',
+    example: 'She was a diligent student who always completed her homework.',
+    synonyms: ['hardworking', 'industrious', 'meticulous'],
+  },
+  {
+    word: 'elaborate',
+    pronunciation: '/ɪˈlæbərɪt/',
+    meaning: 'Detailed and complicated; to explain in detail',
+    example: 'Could you elaborate on your proposal?',
+    synonyms: ['detailed', 'complex', 'explain'],
+  },
+];
+
+const VocabularyPractice = () => {
+  const navigate = useNavigate();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [step, setStep] = useState('learn'); // 'learn', 'practice', 'result'
+  const [score, setScore] = useState(0);
+  const [attempts, setAttempts] = useState(0);
+  const { speak, isSpeaking } = useSpeechSynthesis();
+  const { isListening, transcript, startListening, stopListening, resetTranscript } =
+    useSpeechRecognition();
+
+  const currentWord = vocabularyWords[currentIndex];
+
+  const handlePractice = () => {
+    setStep('practice');
+    resetTranscript();
+  };
+
+  const checkPronunciation = () => {
+    stopListening();
+    const spoken = transcript.toLowerCase().trim();
+    const target = currentWord.word.toLowerCase();
+    const correct = spoken.includes(target);
+
+    if (correct) setScore(score + 1);
+    setAttempts(attempts + 1);
+    setStep('result');
+  };
+
+  const handleNext = () => {
+    resetTranscript();
+    if (currentIndex < vocabularyWords.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setStep('learn');
+    }
+  };
+
+  React.useEffect(() => {
+    if (transcript && !isListening && step === 'practice') {
+      checkPronunciation();
+    }
+  }, [isListening]);
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => navigate('/practice')} className="p-2 rounded-xl hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Vocabulary Builder</h1>
+          <p className="text-gray-500">Learn and practice new words</p>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex gap-1 flex-1">
+          {vocabularyWords.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 flex-1 rounded-full ${
+                i < currentIndex ? 'bg-green-500' : i === currentIndex ? 'bg-primary-500' : 'bg-gray-200'
+              }`}
+            />
+          ))}
+        </div>
+        <span className="text-sm text-gray-500 font-medium">
+          {score}/{attempts} correct
+        </span>
+      </div>
+
+      <div className="card">
+        <AnimatePresence mode="wait">
+          {step === 'learn' && (
+            <motion.div
+              key="learn"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <div className="text-center mb-6">
+                <span className="text-xs font-semibold text-primary-600 uppercase tracking-wide">
+                  Word {currentIndex + 1} of {vocabularyWords.length}
+                </span>
+              </div>
+
+              {/* Word card */}
+              <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-2xl p-8 text-center mb-6">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">{currentWord.word}</h2>
+                <p className="text-gray-500 font-mono mb-3">{currentWord.pronunciation}</p>
+                <button
+                  onClick={() => speak(currentWord.word, { rate: 0.7 })}
+                  className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  <Volume2 className="w-4 h-4" />
+                  {isSpeaking ? 'Playing...' : 'Listen'}
+                </button>
+              </div>
+
+              {/* Meaning */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Meaning
+                  </h3>
+                  <p className="text-gray-800">{currentWord.meaning}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Example
+                  </h3>
+                  <p className="text-gray-800 italic">"{currentWord.example}"</p>
+                  <button
+                    onClick={() => speak(currentWord.example)}
+                    className="text-xs text-primary-600 hover:text-primary-700 mt-1 flex items-center gap-1"
+                  >
+                    <Volume2 className="w-3 h-3" /> Listen
+                  </button>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Synonyms
+                  </h3>
+                  <div className="flex gap-2 flex-wrap">
+                    {currentWord.synonyms.map((syn) => (
+                      <span key={syn} className="px-3 py-1 bg-gray-100 rounded-lg text-sm text-gray-700">
+                        {syn}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={handlePractice} className="btn-primary w-full">
+                Practice Pronunciation
+              </button>
+            </motion.div>
+          )}
+
+          {step === 'practice' && (
+            <motion.div
+              key="practice"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="text-center py-8"
+            >
+              <h3 className="text-lg font-semibold mb-2">
+                Say: <span className="text-primary-600">"{currentWord.word}"</span>
+              </h3>
+              <p className="text-gray-500 text-sm mb-6">{currentWord.pronunciation}</p>
+
+              <button
+                onClick={() => (isListening ? stopListening() : startListening())}
+                className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 transition-all shadow-lg ${
+                  isListening
+                    ? 'bg-red-500 text-white pulse-recording shadow-red-500/30'
+                    : 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-600/30'
+                }`}
+              >
+                {isListening ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
+              </button>
+
+              <p className="text-sm text-gray-500">
+                {isListening ? '🔴 Listening...' : 'Tap to record'}
+              </p>
+
+              {transcript && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-xl">
+                  <p className="text-gray-800">{transcript}</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {step === 'result' && (
+            <motion.div
+              key="result"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="text-center py-8"
+            >
+              {transcript.toLowerCase().includes(currentWord.word.toLowerCase()) ? (
+                <>
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-green-700 mb-2">Correct! 🎉</h3>
+                  <p className="text-gray-500">Great pronunciation of "{currentWord.word}"</p>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <XCircle className="w-8 h-8 text-red-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-red-700 mb-2">Not quite</h3>
+                  <p className="text-gray-500 mb-2">
+                    You said: "{transcript}"
+                  </p>
+                  <p className="text-gray-500">
+                    Expected: "{currentWord.word}"
+                  </p>
+                </>
+              )}
+
+              <div className="flex gap-3 mt-6 justify-center">
+                <button
+                  onClick={() => { setStep('practice'); resetTranscript(); }}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" /> Retry
+                </button>
+                {currentIndex < vocabularyWords.length - 1 && (
+                  <button onClick={handleNext} className="btn-primary flex items-center gap-2">
+                    Next Word <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+export default VocabularyPractice;

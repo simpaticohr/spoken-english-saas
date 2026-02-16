@@ -1,0 +1,76 @@
+import { create } from 'zustand';
+import { practiceAPI } from '../services/api';
+import { generateSessionId } from '../utils/helpers';
+
+export const usePracticeStore = create((set, get) => ({
+  currentSession: null,
+  sessionHistory: [],
+  conversationMessages: [],
+  pronunciationResults: null,
+  loading: false,
+
+  startSession: (type) => {
+    const session = {
+      id: generateSessionId(),
+      type,
+      startedAt: new Date().toISOString(),
+      exercises: [],
+      score: 0,
+    };
+    set({ currentSession: session, conversationMessages: [] });
+    return session;
+  },
+
+  analyzeSpeech: async (data) => {
+    set({ loading: true });
+    try {
+      const result = await practiceAPI.analyzeSpeech(data);
+      set({ pronunciationResults: result, loading: false });
+      return result;
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
+  },
+
+  sendConversationMessage: async (message) => {
+    const messages = [...get().conversationMessages, { role: 'user', content: message }];
+    set({ conversationMessages: messages, loading: true });
+
+    try {
+      const response = await practiceAPI.getConversationPrompt({
+        messages,
+        level: get().currentSession?.level || 'intermediate',
+      });
+      const updatedMessages = [
+        ...messages,
+        { role: 'assistant', content: response.message, feedback: response.feedback },
+      ];
+      set({ conversationMessages: updatedMessages, loading: false });
+      return response;
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
+  },
+
+  endSession: async () => {
+    const session = get().currentSession;
+    if (session) {
+      session.endedAt = new Date().toISOString();
+      try {
+        await practiceAPI.saveSession(session);
+      } catch (error) {
+        console.error('Failed to save session:', error);
+      }
+      set((state) => ({
+        sessionHistory: [session, ...state.sessionHistory],
+        currentSession: null,
+      }));
+    }
+  },
+
+  clearResults: () => {
+    set({ pronunciationResults: null });
+  },
+}));
